@@ -245,6 +245,57 @@
             vh = window.visualViewport.height * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         });
-    </script>
+    </script> window.signup = async () => {
+    const username = document.getElementById('signup-username').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!username || !password) {
+        alert('Please enter username and password');
+        return;
+    }
+    const email = `${username}@catchat.com`;
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        await setDoc(doc(db, 'users', user.uid), { username, email });
+        alert('Signup successful! Now login.');
+        showLogin();
+    } catch (error) {
+        console.error('Signup error:', error.code, error.message);
+        let msg = 'Signup failed';
+        if (error.code === 'auth/email-already-in-use') msg = 'Username already taken';
+        else if (error.code === 'auth/invalid-email') msg = 'Invalid username (use letters, numbers, underscores only)';
+        else if (error.code === 'auth/weak-password') msg = 'Password should be at least 6 characters';
+        else if (error.code === 'auth/operation-not-allowed') msg = 'Email/Password auth not enabled in Firebase console';
+        else msg += ': ' + error.message;
+        alert(msg);
+    }
+};
+
+window.login = async () => {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!username || !password) {
+        alert('Please enter username and password');
+        return;
+    }
+    const email = `${username}@catchat.com`;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle UI switch
+    } catch (error) {
+        console.error('Login error:', error.code, error.message);
+        let msg = 'Login failed';
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            msg = 'Wrong username or password';
+        } else if (error.code === 'auth/invalid-email') {
+            msg = 'Invalid username format';
+        } else if (error.code === 'auth/operation-not-allowed') {
+            msg = 'Email/Password auth not enabled in Firebase console';
+        } else {
+            msg += ': ' + error.message;
+        }
+        alert(msg);
+    }
+};
 </body>
 </html>
