@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FFC0CB">
+    <title>MeowChat</title>
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js" async></script>
+    <style>
+        /* Custom Tailwind-like CSS with pink/white theme, cat patterns, dark mode */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Quicksand', sans-serif; background-color: #ffffff; color: #000000; min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 640px; margin: 0 auto; padding: 1rem; flex: 1; }
+        .pink-bg { background-color: #FFC0CB; }
+        .white-bg { background-color: #ffffff; }
+        .text-pink { color: #FFC0CB; }
+        .border-pink { border: 1px solid #FFC0CB; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .p-4 { padding: 1rem; }
+        .m-2 { margin: 0.5rem; }
+        .rounded { border-radius: 0.5rem; }
+        .shadow { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        input, button { padding: 0.5rem; border: 1px solid #FFC0CB; border-radius: 0.25rem; width: 100%; }
+        button { background-color: #FFC0CB; color: white; cursor: pointer; }
+        button:hover { background-color: #FF69B4; }
+        /* Cat pattern background (simple repeating dots mimicking cat spots) */
+        .cat-pattern { background: radial-gradient(circle, #FF69B4 10%, transparent 10%); background-size: 20px 20px; }
+        /* Chat specific */
+        #messages { height: 50vh; overflow-y: auto; padding: 1rem; background-color: #fff; border: 1px solid #FFC0CB; border-radius: 0.5rem; }
+        .message { margin-bottom: 0.5rem; padding: 0.5rem; border-radius: 0.5rem; max-width: 80%; }
+        .sent { background-color: #FFC0CB; color: white; align-self: flex-end; }
+        .received { background-color: #f0f0f0; color: black; align-self: flex-start; }
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #333333; color: #ffffff; }
+            .pink-bg { background-color: #C71585; }
+            .white-bg { background-color: #444444; }
+            input, button { border-color: #C71585; }
+            button { background-color: #C71585; }
+            button:hover { background-color: #FF1493; }
+            #messages { background-color: #444444; border-color: #C71585; }
+            .received { background-color: #555555; color: white; }
+        }
+        /* Mobile keyboard fix */
+        html { height: 100%; }
+        body { height: calc(100 * var(--vh, 1vh)); }
+    </style>
+</head>
+<body>
+    <div class="container flex flex-col items-center justify-center cat-pattern pink-bg" id="auth-container">
+        <div id="login" class="white-bg p-4 rounded shadow flex flex-col" style="width: 100%;">
+            <h2 class="text-pink text-center m-2">Login to MeowChat</h2>
+            <input id="login-username" placeholder="Username" class="m-2">
+            <input id="login-password" type="password" placeholder="Password" class="m-2">
+            <button onclick="login()" class="m-2">Login</button>
+            <button onclick="showSignup()" class="m-2">Sign Up</button>
+        </div>
+        <div id="signup" class="white-bg p-4 rounded shadow flex flex-col" style="display: none; width: 100%;">
+            <h2 class="text-pink text-center m-2">Sign Up for MeowChat</h2>
+            <input id="signup-username" placeholder="Username" class="m-2">
+            <input id="signup-password" type="password" placeholder="Password" class="m-2">
+            <button onclick="signup()" class="m-2">Sign Up</button>
+            <button onclick="showLogin()" class="m-2">Back to Login</button>
+        </div>
+    </div>
+    <div class="container flex flex-col cat-pattern pink-bg" id="chat-container" style="display: none;">
+        <input id="friend-username" placeholder="Friend's Username" class="m-2">
+        <button onclick="startChat()" class="m-2">Start Chat</button>
+        <div id="messages" class="flex flex-col"></div>
+        <div class="flex">
+            <input id="message-input" placeholder="Type a message..." class="flex-1 m-2">
+            <button onclick="sendMessage()" class="m-2">Send</button>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, updateDoc, doc, setDoc, getDocs, and, or } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrFso8vwiQSZgBKEcXsKfpubj34LCMVXw",
+            authDomain: "meowchat-b6f99.firebaseapp.com",
+            projectId: "meowchat-b6f99",
+            messagingSenderId: "62260339507",
+            appId: "1:62260339507:web:161d70d04f42ef1dd31446"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // OneSignal initialization wrapped in push
+        OneSignal.push(function() {
+            OneSignal.init({
+                appId: "5f6518c6-ebbf-4232-be19-809ccdf85b4d",
+                allowLocalhostAsSecureOrigin: true // For development; remove in production
+            });
+        });
+
+        let currentUser = null;
+        let friendUid = null;
+        let unsubscribe = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+                OneSignal.push(function() {
+                    OneSignal.setExternalUserId(user.uid);
+                });
+            } else {
+                currentUser = null;
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('chat-container').style.display = 'none';
+                if (unsubscribe) unsubscribe();
+            }
+        });
+
+        window.showSignup = () => {
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('signup').style.display = 'flex';
+        };
+
+        window.showLogin = () => {
+            document.getElementById('signup').style.display = 'none';
+            document.getElementById('login').style.display = 'flex';
+        };
+
+        window.signup = async () => {
+            const username = document.getElementById('signup-username').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const email = `${username}@catchat.com`;
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await setDoc(doc(db, 'users', user.uid), { username, email });
+                showLogin();
+            } catch (error) {
+                console.error('Signup error:', error);
+                alert('Signup failed: ' + error.message);
+            }
+        };
+
+        window.login = async () => {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const email = `${username}@catchat.com`;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed: ' + error.message);
+            }
+        };
+
+        window.startChat = async () => {
+            const friendUsername = document.getElementById('friend-username').value.trim();
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('username', '==', friendUsername));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                alert('Friend not found!');
+                return;
+            }
+            friendUid = querySnapshot.docs[0].id;
+            loadMessages();
+        };
+
+        function loadMessages() {
+            if (unsubscribe) unsubscribe();
+            const chatsRef = collection(db, 'chats');
+            const q = query(chatsRef, or(
+                and(where('senderUid', '==', currentUser.uid), where('receiverUid', '==', friendUid)),
+                and(where('senderUid', '==', friendUid), where('receiverUid', '==', currentUser.uid))
+            ), orderBy('timestamp', 'asc'));
+            unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const messagesDiv = document.getElementById('messages');
+                messagesDiv.innerHTML = '';
+                let hasNewMessage = false;
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const isSentByMe = data.senderUid === currentUser.uid;
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `message ${isSentByMe ? 'sent' : 'received'}`;
+                    msgDiv.textContent = data.text;
+                    if (data.seen) msgDiv.textContent += ' (seen)';
+                    messagesDiv.appendChild(msgDiv);
+                    if (!isSentByMe && !data.seen) {
+                        hasNewMessage = true;
+                        updateDoc(doc(db, 'chats', docSnap.id), { seen: true });
+                    }
+                });
+                messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
+                if (hasNewMessage) {
+                    const audio = new Audio('https://www.orangefreesounds.com/wp-content/uploads/2014/09/Pop-sound-effect.mp3');
+                    audio.play(); // Pop sound
+                }
+            });
+        }
+
+        window.sendMessage = async () => {
+            const text = document.getElementById('message-input').value.trim();
+            if (!text || !friendUid) return;
+            try {
+                await addDoc(collection(db, 'chats'), {
+                    senderUid: currentUser.uid,
+                    receiverUid: friendUid,
+                    text,
+                    timestamp: new Date(),
+                    seen: false
+                });
+                // Send OneSignal notification via CORS proxy
+                const corsProxy = 'https://corsproxy.io/?';
+                const url = `${corsProxy}https://onesignal.com/api/v1/notifications`;
+                const body = {
+                    app_id: "5f6518c6-ebbf-4232-be19-809ccdf85b4d",
+                    include_external_user_ids: [friendUid],
+                    contents: { en: "New MeowChat message!" },
+                    data: { type: "chat" }
+                };
+                await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic Os_v2_app_l5srrrxlx5bdfpqzqcom36c3jx5pb22ysqreixmrqclk2z3eqhcwcvn4na6nimxdaq74oln4moli2vwfqjx5ybpm5jd5wivazkzmfga'
+                    },
+                    body: JSON.stringify(body)
+                });
+                document.getElementById('message-input').value = '';
+            } catch (error) {
+                console.error('Send error:', error);
+            }
+        };
+
+        // Mobile keyboard fix with visualViewport
+        let vh = window.visualViewport.height * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        window.visualViewport.addEventListener('resize', () => {
+            vh = window.visualViewport.height * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        });
+    </script>
+</body>
+</html>
