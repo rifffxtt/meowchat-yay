@@ -11,17 +11,22 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
+
         :root {
             --bg-color: #ffe4e1; --header-bg: #ffb6c1; --header-border: #ff69b4;
             --chat-bg: url('https://www.transparenttextures.com/patterns/cats.png');
-            --my-msg-bg: #ff69b4; --other-msg-bg: white; --other-msg-border: #ffb6c1;
-            --other-msg-text: #ff69b4; --input-area-bg: #fff5f7; --input-bg: white; --text-color: #333;
+            --chat-bg-color: transparent; --my-msg-bg: #ff69b4; --other-msg-bg: white;
+            --other-msg-border: #ffb6c1; --other-msg-text: #ff69b4; --input-area-bg: #fff5f7;
+            --input-bg: white; --text-color: #333;
         }
+
         body.dark-theme {
             --bg-color: #121212; --header-bg: #1e1e1e; --header-border: #ff69b4;
-            --chat-bg: none; --my-msg-bg: #d84b91; --other-msg-bg: #2d2d2d;
-            --other-msg-border: #444; --other-msg-text: #ffb6c1; --input-area-bg: #1e1e1e; --input-bg: #333; --text-color: #f1f1f1;
+            --chat-bg: none; --chat-bg-color: #1a1a1a; --my-msg-bg: #d84b91;
+            --other-msg-bg: #2d2d2d; --other-msg-border: #444; --other-msg-text: #ffb6c1;
+            --input-area-bg: #1e1e1e; --input-bg: #333; --text-color: #f1f1f1;
         }
+
         html, body { height: 100%; height: 100dvh; margin: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; background-color: var(--bg-color); color: var(--text-color); font-family: 'Quicksand', system-ui, sans-serif; }
         #login-screen, #chat-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
         #chat-screen { display: none; justify-content: flex-start; }
@@ -31,7 +36,7 @@
         .msg-wrapper { display: flex; flex-direction: column; max-width: 82%; margin-bottom: 15px; }
         .my-wrapper { align-self: flex-end; align-items: flex-end; }
         .other-wrapper { align-self: flex-start; align-items: flex-start; }
-        .sender-name { font-size: 12px; color: var(--other-msg-text); margin-bottom: 4px; font-weight: 700; text-transform: capitalize; }
+        .sender-name { font-size: 12px; color: var(--other-msg-text); margin-bottom: 4px; font-weight: 700; text-transform: capitalize; letter-spacing: 0.5px;}
         .msg-bubble { padding: 12px 18px; border-radius: 22px; font-size: 15px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 3px 8px rgba(0,0,0,0.06); font-weight: 500;}
         .my-msg { background-color: var(--my-msg-bg); color: white; border-bottom-right-radius: 4px; }
         .other-msg { background-color: var(--other-msg-bg); color: var(--other-msg-text); border: 1.5px solid var(--other-msg-border); border-bottom-left-radius: 4px; }
@@ -133,7 +138,7 @@
           snapshot.forEach((d) => {
               const data = d.data();
               const isMe = data.uid === auth.currentUser.uid;
-              if (!isMe && !data.seen) updateDoc(doc(db, "chats", d.id), { seen: true });
+              if (!isMe && !data.seen) updateDoc(doc(db, "chats", d.id), { seen: true, seenBy: extractUsername(auth.currentUser.email) });
 
               const wrap = document.createElement('div');
               wrap.className = `msg-wrapper ${isMe ? 'my-wrapper' : 'other-wrapper'}`;
@@ -149,21 +154,23 @@
       });
   }
 
-  // --- Fixed Push with CORS Proxy ---
+  // --- Fixed Notification with CORS Proxy ---
   async function sendPush(sender, text) {
       const proxyUrl = "https://corsproxy.io/?";
       const targetUrl = "https://onesignal.com/api/v1/notifications";
-      await fetch(proxyUrl + encodeURIComponent(targetUrl), {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": "Basic " + ONESIGNAL_REST_KEY },
-          body: JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              included_segments: ["Total Subscriptions"],
-              headings: { "en": sender + " (MeowChat)" },
-              contents: { "en": text },
-              url: window.location.origin
-          })
-      });
+      try {
+          await fetch(proxyUrl + encodeURIComponent(targetUrl), {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": "Basic " + ONESIGNAL_REST_KEY },
+              body: JSON.stringify({
+                  app_id: ONESIGNAL_APP_ID,
+                  included_segments: ["Total Subscriptions"],
+                  headings: { "en": sender + " (MeowChat)" },
+                  contents: { "en": text },
+                  url: window.location.origin
+              })
+          });
+      } catch (err) { console.error("Push failed", err); }
   }
 
   document.getElementById('send-btn').addEventListener('click', async () => {
@@ -192,6 +199,12 @@
       createUserWithEmailAndPassword(auth, getFakeEmail(), document.getElementById('password').value).then(() => alert("Success!"));
   };
 
+  if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+          document.body.style.height = window.visualViewport.height + 'px';
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+  }
   msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('send-btn').click(); });
 </script>
 </body>
