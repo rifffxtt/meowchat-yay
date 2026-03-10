@@ -4,79 +4,124 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#FFC0CB">
-    <title>MeowChat</title>
+    <title>MeowChat 😺</title>
     <link rel="manifest" href="/manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.js" async></script>
     <style>
-        /* Custom Tailwind-like CSS with pink/white theme, cat patterns, dark mode */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Quicksand', sans-serif; background-color: #ffffff; color: #000000; min-height: 100vh; display: flex; flex-direction: column; }
-        .container { max-width: 640px; margin: 0 auto; padding: 1rem; flex: 1; }
+        body { 
+            font-family: 'Quicksand', sans-serif; 
+            background-color: #ffffff; 
+            color: #000000; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .container { 
+            max-width: 640px; 
+            margin: 0 auto; 
+            padding: 1rem; 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+        }
         .pink-bg { background-color: #FFC0CB; }
         .white-bg { background-color: #ffffff; }
-        .text-pink { color: #FFC0CB; }
-        .border-pink { border: 1px solid #FFC0CB; }
+        .text-pink { color: #FF69B4; }
+        .border-pink { border: 2px solid #FF69B4; }
         .flex { display: flex; }
         .flex-col { flex-direction: column; }
         .items-center { align-items: center; }
         .justify-center { justify-content: center; }
-        .p-4 { padding: 1rem; }
-        .m-2 { margin: 0.5rem; }
-        .rounded { border-radius: 0.5rem; }
-        .shadow { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-        input, button { padding: 0.5rem; border: 1px solid #FFC0CB; border-radius: 0.25rem; width: 100%; }
-        button { background-color: #FFC0CB; color: white; cursor: pointer; }
-        button:hover { background-color: #FF69B4; }
-        /* Cat pattern background (simple repeating dots mimicking cat spots) */
-        .cat-pattern { background: radial-gradient(circle, #FF69B4 10%, transparent 10%); background-size: 20px 20px; }
-        /* Chat specific */
-        #messages { height: 50vh; overflow-y: auto; padding: 1rem; background-color: #fff; border: 1px solid #FFC0CB; border-radius: 0.5rem; }
-        .message { margin-bottom: 0.5rem; padding: 0.5rem; border-radius: 0.5rem; max-width: 80%; }
-        .sent { background-color: #FFC0CB; color: white; align-self: flex-end; }
-        .received { background-color: #f0f0f0; color: black; align-self: flex-start; }
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            body { background-color: #333333; color: #ffffff; }
-            .pink-bg { background-color: #C71585; }
-            .white-bg { background-color: #444444; }
-            input, button { border-color: #C71585; }
-            button { background-color: #C71585; }
-            button:hover { background-color: #FF1493; }
-            #messages { background-color: #444444; border-color: #C71585; }
-            .received { background-color: #555555; color: white; }
+        .p-4 { padding: 1.5rem; }
+        .m-2 { margin: 0.75rem 0; }
+        .rounded-xl { border-radius: 1rem; }
+        .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        input, button { 
+            padding: 0.75rem 1rem; 
+            border: 2px solid #FF69B4; 
+            border-radius: 0.75rem; 
+            width: 100%; 
+            font-size: 1rem; 
         }
-        /* Mobile keyboard fix */
+        button { 
+            background-color: #FF69B4; 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+        }
+        button:hover:not(:disabled) { background-color: #FF1493; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .cat-pattern { 
+            background: radial-gradient(circle, #FF69B4 8%, transparent 8%); 
+            background-size: 24px 24px; 
+        }
+        #messages { 
+            height: 50vh; 
+            overflow-y: auto; 
+            padding: 1rem; 
+            background-color: #fff; 
+            border: 2px solid #FF69B4; 
+            border-radius: 1rem; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .message { 
+            margin-bottom: 0.75rem; 
+            padding: 0.75rem 1rem; 
+            border-radius: 1rem; 
+            max-width: 80%; 
+            word-wrap: break-word; 
+        }
+        .sent { background-color: #FF69B4; color: white; align-self: flex-end; }
+        .received { background-color: #f0f0f0; color: black; align-self: flex-start; }
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #1a1a1a; color: #e0e0e0; }
+            .pink-bg { background-color: #C71585; }
+            .white-bg { background-color: #2c2c2c; }
+            input, button { border-color: #FF69B4; }
+            button { background-color: #FF69B4; }
+            button:hover:not(:disabled) { background-color: #FF1493; }
+            #messages { background-color: #333; border-color: #FF69B4; }
+            .received { background-color: #444; color: white; }
+        }
         html { height: 100%; }
         body { height: calc(100 * var(--vh, 1vh)); }
     </style>
 </head>
 <body>
-    <div class="container flex flex-col items-center justify-center cat-pattern pink-bg" id="auth-container">
-        <div id="login" class="white-bg p-4 rounded shadow flex flex-col" style="width: 100%;">
-            <h2 class="text-pink text-center m-2">Login to MeowChat</h2>
+    <div class="container items-center cat-pattern pink-bg" id="auth-container">
+        <div id="login" class="white-bg p-4 rounded-xl shadow-lg flex flex-col w-full max-w-md">
+            <h2 class="text-pink text-center text-2xl mb-4">MeowChat Login 😺</h2>
             <input id="login-username" placeholder="Username" class="m-2">
             <input id="login-password" type="password" placeholder="Password" class="m-2">
-            <button onclick="login()" class="m-2">Login</button>
-            <button onclick="showSignup()" class="m-2">Sign Up</button>
+            <button id="login-btn" onclick="login()" class="m-2">Login</button>
+            <button onclick="showSignup()" class="m-2 bg-gray-300 text-black">Sign Up</button>
+            <p id="login-status" class="text-center text-sm text-gray-600 mt-2"></p>
         </div>
-        <div id="signup" class="white-bg p-4 rounded shadow flex flex-col" style="display: none; width: 100%;">
-            <h2 class="text-pink text-center m-2">Sign Up for MeowChat</h2>
-            <input id="signup-username" placeholder="Username" class="m-2">
-            <input id="signup-password" type="password" placeholder="Password" class="m-2">
-            <button onclick="signup()" class="m-2">Sign Up</button>
-            <button onclick="showLogin()" class="m-2">Back to Login</button>
+
+        <div id="signup" class="white-bg p-4 rounded-xl shadow-lg flex flex-col w-full max-w-md" style="display: none;">
+            <h2 class="text-pink text-center text-2xl mb-4">Join MeowChat 😺</h2>
+            <input id="signup-username" placeholder="Choose username" class="m-2">
+            <input id="signup-password" type="password" placeholder="Password (min 6 chars)" class="m-2">
+            <button id="signup-btn" onclick="signup()" class="m-2">Sign Up</button>
+            <button onclick="showLogin()" class="m-2 bg-gray-300 text-black">Back to Login</button>
+            <p id="signup-status" class="text-center text-sm text-gray-600 mt-2"></p>
         </div>
     </div>
+
     <div class="container flex flex-col cat-pattern pink-bg" id="chat-container" style="display: none;">
         <input id="friend-username" placeholder="Friend's Username" class="m-2">
-        <button onclick="startChat()" class="m-2">Start Chat</button>
-        <div id="messages" class="flex flex-col"></div>
-        <div class="flex">
-            <input id="message-input" placeholder="Type a message..." class="flex-1 m-2">
-            <button onclick="sendMessage()" class="m-2">Send</button>
+        <button onclick="startChat()" class="m-2">Start Mewwing</button>
+        <div id="messages" class="m-2"></div>
+        <div class="flex m-2">
+            <input id="message-input" placeholder="Type a meow..." class="flex-1 mr-2">
+            <button onclick="sendMessage()">Send 🐾</button>
         </div>
     </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -94,11 +139,11 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // OneSignal initialization wrapped in push
+        // OneSignal
         OneSignal.push(function() {
             OneSignal.init({
                 appId: "5f6518c6-ebbf-4232-be19-809ccdf85b4d",
-                allowLocalhostAsSecureOrigin: true // For development; remove in production
+                allowLocalhostAsSecureOrigin: true
             });
         });
 
@@ -107,15 +152,15 @@
         let unsubscribe = null;
 
         onAuthStateChanged(auth, (user) => {
+            console.log('onAuthStateChanged fired:', user ? 'User logged in' : 'No user');
+            currentUser = user;
             if (user) {
-                currentUser = user;
                 document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('chat-container').style.display = 'flex';
                 OneSignal.push(function() {
                     OneSignal.setExternalUserId(user.uid);
                 });
             } else {
-                currentUser = null;
                 document.getElementById('auth-container').style.display = 'flex';
                 document.getElementById('chat-container').style.display = 'none';
                 if (unsubscribe) unsubscribe();
@@ -133,42 +178,100 @@
         };
 
         window.signup = async () => {
+            const btn = document.getElementById('signup-btn');
+            const status = document.getElementById('signup-status');
             const username = document.getElementById('signup-username').value.trim();
             const password = document.getElementById('signup-password').value;
+
+            if (!username || !password) {
+                status.textContent = 'Please fill both fields 🐱';
+                return;
+            }
+            if (password.length < 6) {
+                status.textContent = 'Password must be at least 6 characters';
+                return;
+            }
+
             const email = `${username}@catchat.com`;
+            btn.disabled = true;
+            status.textContent = 'Creating your account... 😺';
+
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                await setDoc(doc(db, 'users', user.uid), { username, email });
-                showLogin();
+                await setDoc(doc(db, 'users', userCredential.user.uid), { username, email });
+                status.textContent = 'Success! Redirecting to login...';
+                setTimeout(showLogin, 1500);
             } catch (error) {
-                console.error('Signup error:', error);
-                alert('Signup failed: ' + error.message);
+                console.error('Signup error:', error.code, error.message);
+                let msg = 'Oops! ';
+                switch (error.code) {
+                    case 'auth/email-already-in-use': msg += 'Username already taken'; break;
+                    case 'auth/invalid-email': msg += 'Invalid username (letters, numbers, underscores only)'; break;
+                    case 'auth/weak-password': msg += 'Password too weak (min 6 chars)'; break;
+                    case 'auth/operation-not-allowed': msg += 'Email/Password auth not enabled in Firebase console!'; break;
+                    default: msg += error.message;
+                }
+                status.textContent = msg;
+            } finally {
+                btn.disabled = false;
             }
         };
 
         window.login = async () => {
+            const btn = document.getElementById('login-btn');
+            const status = document.getElementById('login-status');
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
+
+            if (!username || !password) {
+                status.textContent = 'Please enter username & password 🐾';
+                return;
+            }
+
             const email = `${username}@catchat.com`;
+            btn.disabled = true;
+            status.textContent = 'Logging you in... 😸';
+
             try {
                 await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged will handle UI change
+                status.textContent = 'Meowcome back!';
             } catch (error) {
-                console.error('Login error:', error);
-                alert('Login failed: ' + error.message);
+                console.error('Login error:', error.code, error.message);
+                let msg = 'Login failed: ';
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        msg += 'Wrong username or password';
+                        break;
+                    case 'auth/invalid-email':
+                        msg += 'Invalid username format';
+                        break;
+                    case 'auth/operation-not-allowed':
+                        msg += 'Email/Password not enabled in Firebase console';
+                        break;
+                    case 'auth/too-many-requests':
+                        msg += 'Too many attempts — try again later';
+                        break;
+                    default:
+                        msg += error.message;
+                }
+                status.textContent = msg;
+            } finally {
+                btn.disabled = false;
             }
         };
 
+        // Rest of your chat code remains the same...
         window.startChat = async () => {
             const friendUsername = document.getElementById('friend-username').value.trim();
+            if (!friendUsername) return alert('Enter friend username!');
             const usersRef = collection(db, 'users');
             const q = query(usersRef, where('username', '==', friendUsername));
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
-                alert('Friend not found!');
-                return;
-            }
-            friendUid = querySnapshot.docs[0].id;
+            const snap = await getDocs(q);
+            if (snap.empty) return alert('Friend not found 😿');
+            friendUid = snap.docs[0].id;
             loadMessages();
         };
 
@@ -179,27 +282,25 @@
                 and(where('senderUid', '==', currentUser.uid), where('receiverUid', '==', friendUid)),
                 and(where('senderUid', '==', friendUid), where('receiverUid', '==', currentUser.uid))
             ), orderBy('timestamp', 'asc'));
-            unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const messagesDiv = document.getElementById('messages');
-                messagesDiv.innerHTML = '';
-                let hasNewMessage = false;
-                querySnapshot.forEach((docSnap) => {
+            unsubscribe = onSnapshot(q, (snap) => {
+                const div = document.getElementById('messages');
+                div.innerHTML = '';
+                let hasNew = false;
+                snap.forEach((docSnap) => {
                     const data = docSnap.data();
-                    const isSentByMe = data.senderUid === currentUser.uid;
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = `message ${isSentByMe ? 'sent' : 'received'}`;
-                    msgDiv.textContent = data.text;
-                    if (data.seen) msgDiv.textContent += ' (seen)';
-                    messagesDiv.appendChild(msgDiv);
-                    if (!isSentByMe && !data.seen) {
-                        hasNewMessage = true;
+                    const isMe = data.senderUid === currentUser.uid;
+                    const msg = document.createElement('div');
+                    msg.className = `message ${isMe ? 'sent' : 'received'}`;
+                    msg.textContent = data.text + (data.seen && isMe ? ' ✓' : '');
+                    div.appendChild(msg);
+                    if (!isMe && !data.seen) {
+                        hasNew = true;
                         updateDoc(doc(db, 'chats', docSnap.id), { seen: true });
                     }
                 });
-                messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
-                if (hasNewMessage) {
-                    const audio = new Audio('https://www.orangefreesounds.com/wp-content/uploads/2014/09/Pop-sound-effect.mp3');
-                    audio.play(); // Pop sound
+                div.scrollTop = div.scrollHeight;
+                if (hasNew) {
+                    new Audio('https://www.orangefreesounds.com/wp-content/uploads/2014/09/Pop-sound-effect.mp3').play().catch(e => console.log('Audio error:', e));
                 }
             });
         }
@@ -207,95 +308,41 @@
         window.sendMessage = async () => {
             const text = document.getElementById('message-input').value.trim();
             if (!text || !friendUid) return;
+            await addDoc(collection(db, 'chats'), {
+                senderUid: currentUser.uid,
+                receiverUid: friendUid,
+                text,
+                timestamp: new Date(),
+                seen: false
+            });
+            // OneSignal push (via proxy)
             try {
-                await addDoc(collection(db, 'chats'), {
-                    senderUid: currentUser.uid,
-                    receiverUid: friendUid,
-                    text,
-                    timestamp: new Date(),
-                    seen: false
-                });
-                // Send OneSignal notification via CORS proxy
-                const corsProxy = 'https://corsproxy.io/?';
-                const url = `${corsProxy}https://onesignal.com/api/v1/notifications`;
-                const body = {
-                    app_id: "5f6518c6-ebbf-4232-be19-809ccdf85b4d",
-                    include_external_user_ids: [friendUid],
-                    contents: { en: "New MeowChat message!" },
-                    data: { type: "chat" }
-                };
-                await fetch(url, {
+                const proxy = 'https://corsproxy.io/?';
+                await fetch(proxy + 'https://onesignal.com/api/v1/notifications', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Basic Os_v2_app_l5srrrxlx5bdfpqzqcom36c3jx5pb22ysqreixmrqclk2z3eqhcwcvn4na6nimxdaq74oln4moli2vwfqjx5ybpm5jd5wivazkzmfga'
                     },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        app_id: "5f6518c6-ebbf-4232-be19-809ccdf85b4d",
+                        include_external_user_ids: [friendUid],
+                        contents: { en: `New message from ${currentUser.displayName || 'someone'}` },
+                        data: { type: "chat" }
+                    })
                 });
-                document.getElementById('message-input').value = '';
-            } catch (error) {
-                console.error('Send error:', error);
-            }
+            } catch (e) { console.error('Notification error:', e); }
+            document.getElementById('message-input').value = '';
         };
 
-        // Mobile keyboard fix with visualViewport
-        let vh = window.visualViewport.height * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-        window.visualViewport.addEventListener('resize', () => {
-            vh = window.visualViewport.height * 0.01;
+        // Mobile viewport fix
+        function setVH() {
+            let vh = window.visualViewport ? window.visualViewport.height * 0.01 : window.innerHeight * 0.01;
             document.documentElement.style.setProperty('--vh', `${vh}px`);
-        });
-    </script> window.signup = async () => {
-    const username = document.getElementById('signup-username').value.trim();
-    const password = document.getElementById('signup-password').value;
-    if (!username || !password) {
-        alert('Please enter username and password');
-        return;
-    }
-    const email = `${username}@catchat.com`;
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        await setDoc(doc(db, 'users', user.uid), { username, email });
-        alert('Signup successful! Now login.');
-        showLogin();
-    } catch (error) {
-        console.error('Signup error:', error.code, error.message);
-        let msg = 'Signup failed';
-        if (error.code === 'auth/email-already-in-use') msg = 'Username already taken';
-        else if (error.code === 'auth/invalid-email') msg = 'Invalid username (use letters, numbers, underscores only)';
-        else if (error.code === 'auth/weak-password') msg = 'Password should be at least 6 characters';
-        else if (error.code === 'auth/operation-not-allowed') msg = 'Email/Password auth not enabled in Firebase console';
-        else msg += ': ' + error.message;
-        alert(msg);
-    }
-};
-
-window.login = async () => {
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    if (!username || !password) {
-        alert('Please enter username and password');
-        return;
-    }
-    const email = `${username}@catchat.com`;
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // onAuthStateChanged will handle UI switch
-    } catch (error) {
-        console.error('Login error:', error.code, error.message);
-        let msg = 'Login failed';
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            msg = 'Wrong username or password';
-        } else if (error.code === 'auth/invalid-email') {
-            msg = 'Invalid username format';
-        } else if (error.code === 'auth/operation-not-allowed') {
-            msg = 'Email/Password auth not enabled in Firebase console';
-        } else {
-            msg += ': ' + error.message;
         }
-        alert(msg);
-    }
-};
+        setVH();
+        window.visualViewport?.addEventListener('resize', setVH);
+        window.addEventListener('orientationchange', setVH);
+    </script>
 </body>
 </html>
