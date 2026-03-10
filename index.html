@@ -6,6 +6,9 @@
     <title>MeowChat</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐱</text></svg>">
     <link rel="manifest" href="manifest.json">
+    
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap');
 
@@ -115,7 +118,6 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCrFso8vwiQSZgBKEcXsKfpubj34LCMVXw",
@@ -126,18 +128,26 @@
     appId: "1:62260339507:web:161d70d04f42ef1dd31446"
   };
 
+  // --- OneSignal Keys ---
+  const ONESIGNAL_APP_ID = "5f6518c6-ebbf-4232-be19-809ccdf85b4d";
+  const ONESIGNAL_REST_KEY = "Os_v2_app_l5srrrxlx5bdfpqzqcom36c3jx5pb22ysqreixmrqclk2z3eqhcwcvn4na6nimxdaq74oln4moli2vwfqjx5ybpm5jd5wivazkzmfga";
+
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  
-  let messaging;
-  try { messaging = getMessaging(app); } catch (e) { console.error("Messaging error:", e); }
+
+  // --- OneSignal Init ---
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+      OneSignal.init({ appId: ONESIGNAL_APP_ID });
+  });
 
   const loginScreen = document.getElementById('login-screen');
   const chatScreen = document.getElementById('chat-screen');
   const messagesDiv = document.getElementById('messages');
   const msgInput = document.getElementById('msg-input');
 
+  // --- UI Handlers ---
   const themeBtn = document.getElementById('theme-btn');
   let isDark = false;
   themeBtn.addEventListener('click', () => {
@@ -147,7 +157,7 @@
   });
 
   document.getElementById('logout-btn').addEventListener('click', () => {
-      signOut(auth).then(() => { messagesDiv.innerHTML = ''; }).catch(e => alert("Logout failed: " + e.message));
+      signOut(auth).then(() => { messagesDiv.innerHTML = ''; }).catch(e => alert("Logout failed"));
   });
 
   function extractUsername(email) { return email ? email.split('@')[0] : "Someone"; }
@@ -156,40 +166,37 @@
       return uname ? uname + "@catchat.com" : "";
   }
 
-  function requestNotificationPermission() {
-      if ('Notification' in window) {
-          Notification.requestPermission().then((permission) => {
-              if (permission === 'granted') console.log('Notification permission granted.');
-          });
-      }
+  // --- Notification Function ---
+  async function sendPush(sender, text) {
+      await fetch("https://onesignal.com/api/v1/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Basic " + ONESIGNAL_REST_KEY },
+          body: JSON.stringify({
+              app_id: ONESIGNAL_APP_ID,
+              included_segments: ["Total Subscriptions"],
+              headings: { "en": sender },
+              contents: { "en": text },
+              url: window.location.origin
+          })
+      });
   }
 
+  // --- Auth Handlers ---
   document.getElementById('login-btn').addEventListener('click', async () => {
       const email = getFakeEmail();
       const pass = document.getElementById('password').value;
-      if(!email || !pass) return alert("Please enter both username and password.");
-      try { 
-          await signInWithEmailAndPassword(auth, email, pass); 
-          requestNotificationPermission(); 
-      } catch(error) { alert("Login failed. Please check your credentials."); }
+      signInWithEmailAndPassword(auth, email, pass).catch(e => alert("Login Error"));
   });
-  
+
   document.getElementById('signup-btn').addEventListener('click', async () => {
       const email = getFakeEmail();
       const pass = document.getElementById('password').value;
-      if(!email || !pass) return alert("Please enter both username and password.");
-      if(pass.length < 6) return alert("Password must be at least 6 characters long.");
-      try {
-          await createUserWithEmailAndPassword(auth, email, pass);
-          alert("Account created successfully! Welcome.");
-          requestNotificationPermission();
-      } catch(error) { alert("Signup failed: " + error.message); }
+      createUserWithEmailAndPassword(auth, email, pass).then(() => alert("Signup success!")).catch(e => alert(e.message));
   });
 
   let currentUser = null;
   let currentUname = "";
   let unsubscribeSnapshot = null;
-  let isInitialLoad = true;
 
   onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -198,94 +205,38 @@
           loginScreen.style.display = 'none';
           chatScreen.style.display = 'flex';
           loadMessages();
-          setTimeout(() => { messagesDiv.scrollTop = messagesDiv.scrollHeight; }, 300);
       } else {
-          currentUser = null;
           loginScreen.style.display = 'flex';
           chatScreen.style.display = 'none';
-          if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+          if(unsubscribeSnapshot) unsubscribeSnapshot();
       }
   });
 
+  // --- Messages Logic ---
   function loadMessages() {
-      if(unsubscribeSnapshot) unsubscribeSnapshot();
-      isInitialLoad = true;
-      messagesDiv.innerHTML = '';
-
       const q = query(collection(db, "chats"), orderBy("timestamp"));
-      
       unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
           messagesDiv.innerHTML = '';
-          
-          snapshot.forEach((documentSnapshot) => {
-              const msgData = documentSnapshot.data();
-              const docId = documentSnapshot.id;
-              const isMyMsg = msgData.uid === currentUser.uid;
-              const senderName = extractUsername(msgData.senderEmail);
+          snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              const isMe = data.uid === currentUser.uid;
               
-              let timeString = "...";
-              if (msgData.timestamp) {
-                  const date = msgData.timestamp.toDate();
-                  timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+              if (!isMe && !data.seen) {
+                  updateDoc(doc(db, "chats", docSnap.id), { seen: true, seenBy: currentUname });
               }
 
-              if (!isMyMsg && !msgData.seen) {
-                  const docRef = doc(db, "chats", docId);
-                  updateDoc(docRef, { seen: true, seenBy: currentUname }).catch(e => console.error(e));
-              }
-
-              const wrapperEl = document.createElement('div');
-              wrapperEl.classList.add('msg-wrapper');
-              wrapperEl.classList.add(isMyMsg ? 'my-wrapper' : 'other-wrapper');
-
-              const nameEl = document.createElement('div');
-              nameEl.classList.add('sender-name');
-              nameEl.innerText = isMyMsg ? "Me" : senderName;
+              const wrap = document.createElement('div');
+              wrap.className = `msg-wrapper ${isMe ? 'my-wrapper' : 'other-wrapper'}`;
               
-              const bubbleEl = document.createElement('div');
-              bubbleEl.classList.add('msg-bubble');
-              bubbleEl.classList.add(isMyMsg ? 'my-msg' : 'other-msg');
-              bubbleEl.innerText = msgData.text;
+              let time = data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "...";
 
-              const infoEl = document.createElement('div');
-              infoEl.classList.add('msg-info');
-              
-              let infoHtml = `<span>${timeString}</span>`;
-              if (isMyMsg && msgData.seen) {
-                  infoHtml += `<span class="seen-text">✓ Seen</span>`;
-              }
-              infoEl.innerHTML = infoHtml;
-
-              wrapperEl.appendChild(nameEl);
-              wrapperEl.appendChild(bubbleEl);
-              wrapperEl.appendChild(infoEl);
-
-              messagesDiv.appendChild(wrapperEl);
+              wrap.innerHTML = `
+                  <div class="sender-name">${isMe ? "Me" : extractUsername(data.senderEmail)}</div>
+                  <div class="msg-bubble ${isMe ? 'my-msg' : 'other-msg'}">${data.text}</div>
+                  <div class="msg-info"><span>${time}</span>${isMe && data.seen ? '<span class="seen-text">✓ Seen</span>' : ''}</div>
+              `;
+              messagesDiv.appendChild(wrap);
           });
-          
-          messagesDiv.scrollTop = messagesDiv.scrollHeight; 
-
-          snapshot.docChanges().forEach((change) => {
-              if (change.type === "added" && !isInitialLoad) {
-                  const newMsg = change.doc.data();
-                  if (newMsg.uid !== currentUser.uid) {
-                      document.getElementById('notify-sound').play().catch(e => console.log(e));
-                      if (Notification.permission === "granted" && document.visibilityState !== "visible") {
-                          new Notification(extractUsername(newMsg.senderEmail), {
-                              body: newMsg.text,
-                              icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐱</text></svg>"
-                          });
-                      }
-                  }
-              }
-          });
-          isInitialLoad = false;
-      });
-  }
-
-  if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-          document.body.style.height = window.visualViewport.height + 'px';
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
       });
   }
@@ -293,34 +244,28 @@
   document.getElementById('send-btn').addEventListener('click', async () => {
       const text = msgInput.value.trim();
       if(text !== "") {
-          msgInput.value = ''; 
-          setTimeout(() => { messagesDiv.scrollTop = messagesDiv.scrollHeight; }, 10);
+          msgInput.value = '';
           try {
               await addDoc(collection(db, "chats"), {
                   uid: currentUser.uid,
                   senderEmail: currentUser.email,
                   text: text,
                   timestamp: serverTimestamp(),
-                  seen: false,
-                  seenBy: ""
+                  seen: false
               });
-          } catch(error) { console.error(error); }
+              sendPush(currentUname, text);
+          } catch(e) { console.error(e); }
       }
-      msgInput.focus(); 
+      msgInput.focus();
   });
 
-  msgInput.addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') { document.getElementById('send-btn').click(); }
-  });
-
-  if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-      .then(function(registration) {
-          console.log('Service Worker registered successfully.');
-      }).catch(function(err) {
-          console.error('Service worker registration failed:', err);
+  if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+          document.body.style.height = window.visualViewport.height + 'px';
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
       });
   }
+  msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('send-btn').click(); });
 </script>
 </body>
 </html>
